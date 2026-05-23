@@ -1,6 +1,11 @@
+import { getDashboardMetrics } from "@/features/dashboard/server";
 import { Briefcase, Calendar, CheckCircle2, TrendingUp } from "lucide-react";
 
-export default function DashboardPage() {
+// Changed to 'async' to allow us to await the database call
+export default async function DashboardPage() {
+    // This fetches the data directly from your SQL Server
+    const metrics = await getDashboardMetrics();
+
     return (
         <div className="space-y-8 flex flex-col h-full">
             {/* Header */}
@@ -13,44 +18,44 @@ export default function DashboardPage() {
 
             {/* Top Level Metrics */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* Card 1 */}
+                {/* Total Applications */}
                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <h3 className="tracking-tight text-sm font-medium">Total Applications</h3>
                         <Briefcase className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{metrics.totalApplications}</div>
                 </div>
 
-                {/* Card 2 */}
+                {/* Active Interviews */}
                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <h3 className="tracking-tight text-sm font-medium">Active Interviews</h3>
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{metrics.activeInterviews}</div>
                 </div>
 
-                {/* Card 3 */}
+                {/* Offers */}
                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <h3 className="tracking-tight text-sm font-medium">Offers</h3>
                         <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{metrics.offers}</div>
                 </div>
 
-                {/* Card 4 */}
+                {/* Response Rate */}
                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <h3 className="tracking-tight text-sm font-medium">Response Rate</h3>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div className="text-2xl font-bold">0%</div>
+                    <div className="text-2xl font-bold">{metrics.responseRate}%</div>
                 </div>
             </div>
 
-            {/* Main Content Area (For upcoming interviews or recent jobs) */}
+            {/* Main Content Area */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 flex-1">
                 <div className="rounded-xl border bg-card text-card-foreground shadow col-span-4 p-6">
                     <h3 className="font-semibold leading-none tracking-tight mb-4">Recent Applications</h3>

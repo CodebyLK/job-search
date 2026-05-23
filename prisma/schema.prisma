@@ -36,8 +36,11 @@ model Interview {
   id              String   @id @default(uuid()) @db.UniqueIdentifier
   applicationId   String   @db.UniqueIdentifier
 
+  // Ensure this field exists
+  status          String   @default("Scheduled") @db.VarChar(50)
+
   round           Int
-  type            String   @db.VarChar(100) // "Behavioral", "Technical"
+  type            String   @db.VarChar(100)
   scheduledFor    DateTime
   notes           String?  @db.NVarChar(Max)
 
