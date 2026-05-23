@@ -3,27 +3,20 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// 1. Ensure this is exported so page.tsx can find it
 export async function getResumes() {
     return await prisma.resumeVariant.findMany({
         include: {
-            applications: true,
+            applications: true, // This lets us count how many apps used this resume
         },
         orderBy: { updatedAt: "desc" },
     });
 }
 
-// 2. Ensure this is exported and accepts the filePath
-export async function createResumeVariant(data: {
-    name: string;
-    notes?: string;
-    filePath?: string | null;
-}) {
+export async function createResumeVariant(data: { name: string; notes?: string }) {
     await prisma.resumeVariant.create({
         data: {
             name: data.name,
             notes: data.notes,
-            filePath: data.filePath,
         },
     });
     revalidatePath("/resumes");

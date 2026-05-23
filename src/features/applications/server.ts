@@ -49,3 +49,12 @@ export async function getApplicationById(id: string) {
         where: { id },
     });
 }
+
+
+export async function updateApplicationResume(applicationId: string, resumeId: string | null) {
+    await prisma.application.update({
+        where: { id: applicationId },
+        data: { resumeId: resumeId },
+    });
+    revalidatePath(`/applications/${applicationId}`);
+}
