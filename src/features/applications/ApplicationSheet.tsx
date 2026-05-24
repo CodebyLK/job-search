@@ -23,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { createApplication } from "./server";
 
-// 1. Define the shape of the data we expect from the server
 type ApplicationSheetProps = {
     resumes: { id: string; name: string }[];
 };
@@ -38,7 +37,6 @@ export function ApplicationSheet({ resumes }: ApplicationSheetProps) {
             status: "Draft",
             postUrl: formData.get("postUrl") as string,
             resumeId: formData.get("resumeId") as string | null,
-            // ✅ ADD THIS LINE:
             jobDescription: formData.get("jobDescription") as string,
         };
 
@@ -81,11 +79,11 @@ export function ApplicationSheet({ resumes }: ApplicationSheetProps) {
                         <Input id="postUrl" name="postUrl" type="url" placeholder="https://linkedin.com/..." />
                     </div>
 
-                    {/* 3. The New Resume Dropdown */}
                     <div className="space-y-2">
                         <Label htmlFor="resumeId">Tailored Resume Used (Optional)</Label>
                         <Select name="resumeId">
-                            <SelectTrigger>
+                            {/* 👇 UI Fix applied right here */}
+                            <SelectTrigger className="w-[300px] focus:ring-1 focus:ring-offset-0">
                                 <SelectValue placeholder="Select a resume variant..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -108,6 +106,7 @@ export function ApplicationSheet({ resumes }: ApplicationSheetProps) {
                             name="jobDescription"
                             placeholder="Paste the entire text of the job posting here..."
                             className="h-64 font-mono text-xs resize-none"
+                            required
                         />
                     </div>
 

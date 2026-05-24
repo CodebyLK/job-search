@@ -6,12 +6,18 @@ import { BrainCircuit, Loader2 } from "lucide-react";
 import { generateFitScore } from "./actions";
 import { toast } from "sonner";
 
-// 1. Notice jobDescription is COMPLETELY gone from the props
-export function AnalyzeButton({ applicationId }: { applicationId: string }) {
+export function AnalyzeButton({
+                                  applicationId,
+                                  hasResume,
+                                  hasJobDescription
+                              }: {
+    applicationId: string;
+    hasResume: boolean;
+    hasJobDescription: boolean;
+}) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     async function handleAnalysis() {
-        // 2. No early return! It fires immediately.
         setIsAnalyzing(true);
 
         try {
@@ -40,7 +46,8 @@ export function AnalyzeButton({ applicationId }: { applicationId: string }) {
         <Button
             className="w-full"
             onClick={handleAnalysis}
-            disabled={isAnalyzing} // 3. Disabled only when loading
+            // 👇 The safety lock is fully engaged!
+            disabled={isAnalyzing || !hasResume || !hasJobDescription}
         >
             {isAnalyzing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

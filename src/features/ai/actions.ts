@@ -1,6 +1,6 @@
 "use server";
 
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -49,7 +49,7 @@ export async function generateFitScore(applicationId: string) {
                         {
                             type: "file",
                             data: dataBuffer,
-                            mediaType: "application/pdf" // 👈 The fix is right here!
+                            mediaType: "application/pdf"
                         }
                     ]
                 }
@@ -72,9 +72,50 @@ export async function generateFitScore(applicationId: string) {
         console.error("AI Analysis failed:", error);
         return {
             success: false,
-            // ✅ THE FIX: Safely extract the message without using 'any'
             error: error instanceof Error ? error.message : String(error)
         };
     }
+}
 
+// 👇 NEW FUNCTION: The AI Resume Tailor Engine
+export async function generateTailoredBullets(jobDescription: string, masterBullets: string) {
+    try {
+        const { text } = await generateText({
+            model: google("gemini-2.5-flash"),
+            system: `You are an expert technical recruiter and ATS-optimization specialist. 
+            Your goal is to rewrite the candidate's master resume bullet points to perfectly align with the provided job description.
+            
+            CRITICAL CONTEXT:
+            The candidate is transitioning from a highly analytical career in pharmaceutical chemistry into software engineering. 
+            You must intelligently translate their past experience—such as purity analysis, synthesized compound testing, and strict regulatory documentation—into tech industry equivalents. 
+            Frame their chemistry background as rigorous QA testing, systems architecture, data engineering, and meticulous technical documentation.
+            
+            RULES:
+            1. Output ONLY the rewritten bullet points. No introductory text.
+            2. Each bullet point MUST begin on a new physical line. Do NOT combine them into a single running paragraph.
+            3. Do not invent fake metrics, but emphasize any data, scale, or accuracy metrics provided in the master bullets.
+            4. Naturally weave in the exact keywords from the job description. You MUST wrap these specific ATS keywords in **double asterisks** (e.g., **Python** or **quality assurance**) so they can be visually highlighted.`,
+            prompt: `
+            JOB DESCRIPTION:
+            ${jobDescription}
+
+            CANDIDATE'S MASTER BULLETS:
+            ${masterBullets}
+            
+            Please rewrite and optimize the bullets.
+            `,
+        });
+
+        return {
+            success: true,
+            text: text
+        };
+
+    } catch (error) {
+        console.error("AI Tailoring failed:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
 }

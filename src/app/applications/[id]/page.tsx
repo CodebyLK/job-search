@@ -5,6 +5,7 @@ import { ArrowLeft, BrainCircuit, AlertTriangle, ExternalLink, Sparkles } from "
 import { Button } from "@/components/ui/button";
 import { AnalyzeButton } from "@/features/ai/AnalyzeButton";
 import { ApplyButton } from "@/features/applications/ApplyButton";
+import { TailorResumeButton } from "@/features/ai/TailorResumeButton";
 
 export default async function ApplicationDashboard({
                                                        params
@@ -52,12 +53,27 @@ export default async function ApplicationDashboard({
                             </div>
                         )}
 
-                        {/* ✅ FIXED: Removed jobDescription prop */}
-                        <AnalyzeButton applicationId={application.id} />
-                        <ApplyButton applicationId={application.id} status={application.status} />
+                        {/* ✅ The buttons are perfectly stacked right here */}
+                        <div className="flex flex-col gap-3 mt-4">
+                            <AnalyzeButton
+                                applicationId={application.id}
+                                hasResume={!!application.resumeId}
+                                hasJobDescription={!!application.jobDescription}
+                            />
+
+                            <TailorResumeButton
+                                applicationId={application.id}
+                                jobDescription={application.jobDescription}
+                            />
+
+                            <ApplyButton
+                                applicationId={application.id}
+                                status={application.status}
+                            />
+                        </div>
                     </div>
 
-                    {/* ✅ FIXED: Now safely displays the AI paragraph without trying to JSON.parse it */}
+                    {/* AI Recruiter Notes */}
                     {application.aiAnalysis && (
                         <div className="rounded-xl border bg-card p-6 shadow-sm">
                             <h3 className="font-bold flex items-center mb-4 text-indigo-900">

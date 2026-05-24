@@ -42,14 +42,23 @@ export async function createApplication(data: {
 
 // ACTION: Update the status of an application (e.g., Draft -> Applied)
 export async function updateApplicationStatus(id: string, status: string) {
-    await prisma.application.update({
-        where: { id },
-        data: { status },
-    });
+    try {
+        await prisma.application.update({
+            where: { id },
+            data: { status },
+        });
 
-    // Refresh both the list and the detail page
-    revalidatePath("/applications");
-    revalidatePath(`/applications/${id}`);
+        // Refresh both the list and the detail page
+        revalidatePath("/applications");
+        revalidatePath(`/applications/${id}`);
+
+        // 💡 NEW: We must return this so the ApplyButton knows it worked!
+        return { success: true };
+
+    } catch (error) {
+        console.error("Failed to update status:", error);
+        return { success: false, error: "Failed to update status" };
+    }
 }
 
 // FETCH: Get a single application by ID
@@ -66,4 +75,20 @@ export async function updateApplicationResume(applicationId: string, resumeId: s
         data: { resumeId: resumeId },
     });
     revalidatePath(`/applications/${applicationId}`);
+}
+
+// ACTION: Delete an application permanently
+export async function deleteApplication(id: string) {
+    try {
+        await prisma.application.delete({
+            where: { id },
+        });
+
+        // Instantly refresh the table to remove the deleted row
+        revalidatePath("/applications");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete application:", error);
+        return { success: false, error: "Failed to delete application" };
+    }
 }
