@@ -1,111 +1,108 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Save, Plus, Trash2, Check } from "lucide-react";
+import { Save, Plus, Trash2, Check, UserCircle, Briefcase, Code, GraduationCap, Minus, Wrench, Trophy } from "lucide-react";
+
+interface ResumeItem {
+    id: string;
+    content: string;
+}
+
+interface ResumeSection {
+    id: string;
+    type: 'experience' | 'projects' | 'education' | 'skills' | 'awards';
+    title: string;
+    subtitle?: string;
+    items: ResumeItem[];
+}
 
 export function BulletBank() {
-    const [bullets, setBullets] = useState<string[]>([]);
-    const [isMounted, setIsMounted] = useState(false);
+    // Initializing state with a function to prevent cascading renders
+    const [profileContext, setProfileContext] = useState<string>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("master_resume_data");
+            return saved ? JSON.parse(saved).context : "";
+        }
+        return "";
+    });
+
+    const [sections, setSections] = useState<ResumeSection[]>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("master_resume_data");
+            return saved ? JSON.parse(saved).sections : [];
+        }
+        return [];
+    });
+
     const [isSaved, setIsSaved] = useState(false);
 
-    // Load from local storage and split into individual rows
-    useEffect(() => {
-        setIsMounted(true);
-        const saved = localStorage.getItem("master_bullets");
-        if (saved) {
-            // Split by newline and remove any empty rows
-            setBullets(saved.split("\n").filter(b => b.trim() !== ""));
-        } else {
-            setBullets([
-                "- Analyzed synthesized compounds for purity and maintained strict regulatory documentation for compliance.",
-                "- Built a data engineering pipeline using Python and Pandas to extract WNBA stats from the NBA API.",
-                "- Developed 'The Herd', an Android mobile application featuring community boards and study guides.",
-                "- Created 'Molecular Mixology', a full-stack application bridging chemistry and software principles."
-            ]);
-        }
-    }, []);
-
     function handleSave() {
-        // Join the array back into a single block of text for the AI
-        const textToSave = bullets.join("\n");
-        localStorage.setItem("master_bullets", textToSave);
-
-        toast.success("Saved to Bullet Bank", {
-            description: "Your master experience is ready for AI tailoring.",
-        });
-
+        localStorage.setItem("master_resume_data", JSON.stringify({ context: profileContext, sections }));
         setIsSaved(true);
+        toast.success("Resume structure saved!");
         setTimeout(() => setIsSaved(false), 2000);
     }
 
-    function updateBullet(index: number, newValue: string) {
-        const newBullets = [...bullets];
-        newBullets[index] = newValue;
-        setBullets(newBullets);
+    function addSection(type: ResumeSection['type'], title: string) {
+        setSections([...sections, {
+            id: Date.now().toString(),
+            type,
+            title,
+            subtitle: (type === 'skills' || type === 'awards') ? undefined : "Company/Detail",
+            items: [{ id: Date.now().toString(), content: (type === 'skills' || type === 'awards') ? "" : "- New detail" }]
+        }]);
     }
-
-    function removeBullet(index: number) {
-        const newBullets = bullets.filter((_, i) => i !== index);
-        setBullets(newBullets);
-    }
-
-    function addBullet() {
-        setBullets([...bullets, "- "]);
-    }
-
-    if (!isMounted) return null;
 
     return (
-        <div className="space-y-4 max-w-4xl mx-auto mt-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Master Bullet Bank</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Add, edit, or remove your raw experience here. The AI will pull from this repository to generate targeted resumes.
-                    </p>
-                </div>
-                <Button
-                    onClick={handleSave}
-                    className={`w-32 transition-all ${isSaved ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"} text-white`}
-                >
-                    {isSaved ? (
-                        <><Check className="mr-2 h-4 w-4" /> Saved!</>
-                    ) : (
-                        <><Save className="mr-2 h-4 w-4" /> Save Bank</>
-                    )}
+        <div className="max-w-4xl mx-auto space-y-8 p-6 mt-8">
+            <div className="flex justify-between items-center border-b pb-4">
+                <h2 className="text-2xl font-semibold">Master Resume Builder</h2>
+                <Button onClick={handleSave} className={isSaved ? "bg-green-600" : "bg-blue-600"}>
+                    {isSaved ? <Check className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} Save All
                 </Button>
             </div>
 
-            <div className="space-y-3 mt-4">
-                {bullets.map((bullet, index) => (
-                    <div key={index} className="flex gap-2 items-start group">
-                        <Textarea
-                            value={bullet}
-                            onChange={(e) => updateBullet(index, e.target.value)}
-                            className="min-h-[60px] bg-[#1e1e1e] border-gray-800 text-gray-300 font-mono text-sm focus-visible:ring-1 focus-visible:ring-blue-500 resize-y p-3 leading-relaxed"
-                        />
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeBullet(index)}
-                            className="h-[60px] border-gray-800 hover:bg-red-950 hover:text-red-400 hover:border-red-900 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+            <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2"><UserCircle className="text-purple-400" /> Narrative & Education</h3>
+                <Textarea value={profileContext} onChange={(e) => setProfileContext(e.target.value)} className="min-h-[100px] bg-[#121212]" />
+            </div>
+
+            <div className="space-y-6">
+                {sections.map((section, sIdx) => (
+                    <div key={section.id} className="p-4 border border-gray-800 rounded-lg bg-[#1e1e1e] space-y-3">
+                        <div className="flex gap-2 items-center">
+                            {section.type === 'experience' && <Briefcase className="text-blue-400" />}
+                            {section.type === 'projects' && <Code className="text-green-400" />}
+                            {section.type === 'education' && <GraduationCap className="text-yellow-400" />}
+                            {section.type === 'skills' && <Wrench className="text-red-400" />}
+                            {section.type === 'awards' && <Trophy className="text-amber-400" />}
+                            <input className="bg-transparent font-bold w-full outline-none" value={section.title} onChange={(e) => { const n = [...sections]; n[sIdx].title = e.target.value; setSections(n); }} />
+                            {(section.type !== 'skills' && section.type !== 'awards') && (
+                                <input className="bg-transparent text-gray-400 w-full outline-none" value={section.subtitle || ""} onChange={(e) => { const n = [...sections]; n[sIdx].subtitle = e.target.value; setSections(n); }} />
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => setSections(sections.filter((_, i) => i !== sIdx))}><Trash2 className="text-red-500" size={16}/></Button>
+                        </div>
+                        {section.items.map((item, iIdx) => (
+                            <div key={item.id} className="flex gap-2">
+                                <Textarea value={item.content} onChange={(e) => { const n = [...sections]; n[sIdx].items[iIdx].content = e.target.value; setSections(n); }} className="bg-[#121212]" />
+                                <Button variant="ghost" size="icon" onClick={() => { const n = [...sections]; n[sIdx].items.splice(iIdx, 1); setSections(n); }}><Minus size={16}/></Button>
+                            </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={() => { const n = [...sections]; n[sIdx].items.push({ id: Date.now().toString(), content: "- " }); setSections(n); }}><Plus size={16} className="mr-2"/> Add Item</Button>
                     </div>
                 ))}
             </div>
 
-            <Button
-                variant="outline"
-                onClick={addBullet}
-                className="w-full mt-4 border-dashed border-gray-700 text-gray-400 hover:text-white hover:border-gray-500"
-            >
-                <Plus className="mr-2 h-4 w-4" /> Add New Bullet
-            </Button>
+            <div className="flex flex-wrap gap-2 border-t pt-6">
+                <Button variant="outline" onClick={() => addSection('experience', 'New Experience')}><Briefcase className="mr-2" size={16}/> Add Experience</Button>
+                <Button variant="outline" onClick={() => addSection('projects', 'New Project')}><Code className="mr-2" size={16}/> Add Project</Button>
+                <Button variant="outline" onClick={() => addSection('skills', 'Skills')}><Wrench className="mr-2" size={16}/> Add Skills</Button>
+                <Button variant="outline" onClick={() => addSection('education', 'Education')}><GraduationCap className="mr-2" size={16}/> Add Education</Button>
+                <Button variant="outline" onClick={() => addSection('awards', 'Awards & Achievements')}><Trophy className="mr-2" size={16}/> Add Awards</Button>
+            </div>
         </div>
     );
 }

@@ -77,38 +77,51 @@ export async function generateFitScore(applicationId: string) {
     }
 }
 
-// 👇 NEW FUNCTION: The AI Resume Tailor Engine
-export async function generateTailoredBullets(jobDescription: string, masterBullets: string) {
+// 👇 Now accepts profileContext as the third argument
+export async function generateTailoredResume(jobDescription: string, masterBullets: string, profileContext: string) {
     try {
-        const { text } = await generateText({
+        const { object } = await generateObject({
             model: google("gemini-2.5-flash"),
+            schema: z.object({
+                fullName: z.string().describe("Leave blank or use a placeholder like '[Your Name]' if unknown."),
+                contactInfo: z.string().describe("Placeholder format: City, State | Phone | Email | LinkedIn/GitHub"),
+                summary: z.string().describe("A powerful 2-3 sentence professional summary tailored to the job description, framing the candidate's overarching narrative."),
+                skills: z.array(z.string()).describe("A list of 8-12 core technical and soft skills relevant to the role."),
+                experience: z.array(z.object({
+                    company: z.string().describe("Use '[Company Name]' if not explicitly stated in the bullets."),
+                    role: z.string().describe("Use a logical role title based on the bullet, or '[Role]'."),
+                    dates: z.string().describe("Use '[Dates]' if unknown."),
+                    bullets: z.array(z.string())
+                })),
+                education: z.array(z.object({
+                    degree: z.string(),
+                    school: z.string(),
+                    dates: z.string()
+                }))
+            }),
             system: `You are an expert technical recruiter and ATS-optimization specialist. 
-            Your goal is to rewrite the candidate's master resume bullet points to perfectly align with the provided job description.
+            Your goal is to generate a complete, tailored, structured resume for the provided job description using the candidate's master experience bullets.
             
-            CRITICAL CONTEXT:
-            The candidate is transitioning from a highly analytical career in pharmaceutical chemistry into software engineering. 
-            You must intelligently translate their past experience—such as purity analysis, synthesized compound testing, and strict regulatory documentation—into tech industry equivalents. 
-            Frame their chemistry background as rigorous QA testing, systems architecture, data engineering, and meticulous technical documentation.
+            CRITICAL CANDIDATE CONTEXT & EDUCATION:
+            ${profileContext}
             
             RULES:
-            1. Output ONLY the rewritten bullet points. No introductory text.
-            2. Each bullet point MUST begin on a new physical line. Do NOT combine them into a single running paragraph.
-            3. Do not invent fake metrics, but emphasize any data, scale, or accuracy metrics provided in the master bullets.
-            4. Naturally weave in the exact keywords from the job description. You MUST wrap these specific ATS keywords in **double asterisks** (e.g., **Python** or **quality assurance**) so they can be visually highlighted.`,
+            1. Write a compelling summary that bridges their unique background into the requirements of this specific role.
+            2. Extract and match core technical skills requested in the job description.
+            3. Group the master bullets logically into the experience timeline. Adapt them slightly to highlight keywords from the job description.
+            4. Do not invent fake metrics. If exact companies or dates are missing for the experience section, use bracketed placeholders (e.g., "[Company Name]") so the user can fill them in later.`,
             prompt: `
             JOB DESCRIPTION:
             ${jobDescription}
 
             CANDIDATE'S MASTER BULLETS:
             ${masterBullets}
-            
-            Please rewrite and optimize the bullets.
-            `,
+            `
         });
 
         return {
             success: true,
-            text: text
+            resume: object
         };
 
     } catch (error) {

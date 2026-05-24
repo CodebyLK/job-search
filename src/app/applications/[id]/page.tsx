@@ -7,6 +7,8 @@ import { ApplyButton } from "@/features/applications/ApplyButton";
 import { TailorResumeButton } from "@/features/ai/TailorResumeButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { InterviewPrepTab } from "@/features/interviews/InterviewPrepTab";
+import { ScratchpadTab } from "@/features/applications/ScratchpadTab";
 
 // 💡 UPGRADED: The Heuristic Parser now recognizes headers and metadata
 function parseJobDescription(rawText: string | null) {
@@ -122,16 +124,17 @@ export default async function ApplicationDashboard({
                             </div>
                         </TabsContent>
 
+                        {/* TAB 2: Interview Prep */}
                         <TabsContent value="prep" className="mt-4">
-                            <div className="bg-card rounded-xl border p-6 flex items-center justify-center min-h-[500px] text-muted-foreground shadow-sm">
-                                AI Interview Generation Tool coming soon...
-                            </div>
+                            <InterviewPrepTab
+                                applicationId={application.id}
+                                jobDescription={application.jobDescription}
+                            />
                         </TabsContent>
 
+                        {/* TAB 3: Scratchpad */}
                         <TabsContent value="notes" className="mt-4">
-                            <div className="bg-card rounded-xl border p-6 flex items-center justify-center min-h-[500px] text-muted-foreground shadow-sm">
-                                Scratchpad notes coming soon...
-                            </div>
+                            <ScratchpadTab applicationId={application.id} />
                         </TabsContent>
                     </Tabs>
                 </div>

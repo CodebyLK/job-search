@@ -5,7 +5,39 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Wand2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { generateTailoredBullets } from "./actions";
+import { generateTailoredResume } from "./actions";
+
+// Interfaces for our modular data structure
+export interface ResumeItem {
+    id: string;
+    content: string;
+}
+
+export interface ResumeSection {
+    id: string;
+    type: 'experience' | 'projects' | 'education' | 'skills' | 'awards';
+    title: string;
+    subtitle?: string;
+    items: ResumeItem[];
+}
+
+export interface TailoredResume {
+    fullName: string;
+    contactInfo: string;
+    summary: string;
+    skills: string[];
+    experience: {
+        company: string;
+        role: string;
+        dates: string;
+        bullets: string[];
+    }[];
+    education: {
+        degree: string;
+        school: string;
+        dates: string;
+    }[];
+}
 
 export function TailorResumeButton({
                                        applicationId,
@@ -16,116 +48,125 @@ export function TailorResumeButton({
 }) {
     const [isTailoring, setIsTailoring] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [tailoredResult, setTailoredResult] = useState("");
+    const [resumeData, setResumeData] = useState<TailoredResume | null>(null);
     const [isCopied, setIsCopied] = useState(false);
-
-    // 💡 UPGRADE 1: This now splits the text by newlines and wraps each bullet in its own HTML block
-    function renderRichText(text: string) {
-        return text.split('\n').map((line, lineIndex) => {
-            if (!line.trim()) return null; // Skip blank empty lines
-
-            const parts = line.split("**");
-            return (
-                <div key={lineIndex} className="mb-3">
-                    {parts.map((part, index) => {
-                        if (index % 2 === 1) {
-                            return <strong key={index} className="text-white font-bold">{part}</strong>;
-                        }
-                        return <span key={index}>{part}</span>;
-                    })}
-                </div>
-            );
-        });
-    }
 
     async function handleTailor() {
         if (!jobDescription) {
-            toast.error("Missing Job Description", { description: "You need a job description to tailor against." });
+            toast.error("Missing job description.");
             return;
         }
 
-        const masterBullets = localStorage.getItem("master_bullets");
-        if (!masterBullets) {
-            toast.error("Empty Bullet Bank", { description: "Please add your experience to the Bullet Bank first." });
-            return;
-        }
+        const rawData = localStorage.getItem("master_resume_data");
+        const masterData = rawData ? JSON.parse(rawData) : { context: "", sections: [] as ResumeSection[] };
+
+        // ✅ FIXED: Now mapping over 'sections' instead of non-existent 'experience'
+        // We filter for 'experience' or 'projects' to give the AI relevant work history
+        const relevantSections = (masterData.sections || []).filter(
+            (s: ResumeSection) => s.type === 'experience' || s.type === 'projects'
+        );
+
+        const formattedExperience = relevantSections.map((sec: ResumeSection) =>
+            `SECTION: ${sec.title}\n${sec.items.map(item => item.content).join("\n")}`
+        ).join("\n\n");
 
         setIsTailoring(true);
         try {
-            const result = await generateTailoredBullets(jobDescription, masterBullets);
+            const result = await generateTailoredResume(
+                jobDescription,
+                formattedExperience,
+                masterData.context || ""
+            );
 
-            if (result.success && result.text) {
-                setTailoredResult(result.text);
+            if (result.success && result.resume) {
+                setResumeData(result.resume as TailoredResume);
                 setIsOpen(true);
-                toast.success("Resume Tailored successfully!");
             } else {
-                toast.error("Generation Failed", { description: result.error || "No text returned." });
+                toast.error("Generation Failed: " + (result.error || "Unknown error"));
             }
-        } catch (error) {
-            console.error(error);
-            toast.error("System Error");
         } finally {
             setIsTailoring(false);
         }
     }
 
     async function handleCopy() {
-        try {
-            // 💡 UPGRADE 2: Adds <br/> tags to the clipboard so Microsoft Word respects the spacing!
-            const htmlText = tailoredResult
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br/>'); // Converts raw enters into HTML line breaks
+        if (!resumeData) return;
 
-            const plainText = tailoredResult.replace(/\*\*/g, '');
+        const text = `
+${resumeData.fullName}
+${resumeData.contactInfo}
 
-            const clipboardItem = new ClipboardItem({
-                "text/plain": new Blob([plainText], { type: "text/plain" }),
-                "text/html": new Blob([htmlText], { type: "text/html" }),
-            });
+PROFESSIONAL SUMMARY
+${resumeData.summary}
 
-            await navigator.clipboard.write([clipboardItem]);
+TECHNICAL SKILLS
+${resumeData.skills.join(" • ")}
 
-            setIsCopied(true);
-            toast.success("Copied rich text to clipboard!");
-            setTimeout(() => setIsCopied(false), 2000);
+EXPERIENCE
+${resumeData.experience.map(e => `${e.role} | ${e.company} | ${e.dates}\n${e.bullets.join("\n")}`).join("\n\n")}
 
-        } catch (err) {
-            await navigator.clipboard.writeText(tailoredResult.replace(/\*\*/g, ''));
-            toast.success("Copied as plain text (Browser Fallback)");
-        }
+EDUCATION
+${resumeData.education.map(e => `${e.school}, ${e.degree} (${e.dates})`).join("\n")}
+        `.trim();
+
+        await navigator.clipboard.writeText(text);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     }
 
     return (
         <>
-            <Button
-                variant="outline"
-                className="w-full border-blue-600/30 hover:bg-blue-600/10 text-blue-400"
-                onClick={handleTailor}
-                disabled={isTailoring || !jobDescription}
-            >
-                {isTailoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                {isTailoring ? "Tailoring..." : "Tailor Resume"}
+            <Button onClick={handleTailor} disabled={isTailoring} variant="outline" className="w-full border-blue-600/30 hover:bg-blue-600/10 text-blue-400">
+                {isTailoring ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                {isTailoring ? "Generating..." : "Tailor Full Resume"}
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-3xl bg-[#1e1e1e] text-gray-200 border-gray-800">
-                    <DialogHeader className="flex flex-row items-center justify-between pr-8">
-                        <DialogTitle>Tailored Resume Bullets</DialogTitle>
-                        <Button variant="ghost" size="sm" onClick={handleCopy} className="text-gray-400 hover:text-white">
-                            {isCopied ? <Check className="h-4 w-4 mr-2 text-green-500" /> : <Copy className="h-4 w-4 mr-2" />}
-                            {isCopied ? "Copied!" : "Copy All"}
-                        </Button>
+                <DialogContent className="sm:max-w-4xl bg-[#1e1e1e] text-gray-200 border-gray-800">
+                    <DialogHeader>
+                        <div className="flex flex-row items-center justify-between">
+                            <DialogTitle>Tailored Resume Preview</DialogTitle>
+                            <Button variant="ghost" size="sm" onClick={handleCopy} className="flex items-center gap-2 text-gray-400 hover:text-white">
+                                {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                {isCopied ? "Copied!" : "Copy to Word/Docs"}
+                            </Button>
+                        </div>
                     </DialogHeader>
 
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-400">
-                            The AI specifically targeted these bolded keywords to beat the ATS. Highlight and copy this text directly into your master template.
-                        </p>
+                    {resumeData && (
+                        <div className="h-[600px] overflow-y-auto bg-white text-black p-8 rounded-md font-sans border shadow-inner">
+                            <h1 className="text-2xl font-bold text-center uppercase tracking-wide">{resumeData.fullName}</h1>
+                            <p className="text-center text-sm mb-6">{resumeData.contactInfo}</p>
 
-                        <div className="h-96 overflow-y-auto font-mono text-[13px] bg-[#121212] border border-gray-800 focus-visible:ring-0 text-gray-400 p-6 rounded-md select-text leading-relaxed">
-                            {renderRichText(tailoredResult)}
+                            <h2 className="font-bold border-b border-black uppercase text-xs mb-2">Professional Summary</h2>
+                            <p className="text-sm mb-4 leading-relaxed">{resumeData.summary}</p>
+
+                            <h2 className="font-bold border-b border-black uppercase text-xs mb-2">Technical Skills</h2>
+                            <p className="text-sm mb-4 font-medium">{resumeData.skills.join(" • ")}</p>
+
+                            <h2 className="font-bold border-b border-black uppercase text-xs mb-2">Experience</h2>
+                            {resumeData.experience.map((exp, i) => (
+                                <div key={i} className="mb-4">
+                                    <div className="flex justify-between font-bold text-sm">
+                                        <span>{exp.role}</span>
+                                        <span>{exp.dates}</span>
+                                    </div>
+                                    <div className="italic text-sm text-gray-700">{exp.company}</div>
+                                    <ul className="list-disc pl-5 text-sm mt-1 space-y-1">
+                                        {exp.bullets.map((b, j) => <li key={j}>{b}</li>)}
+                                    </ul>
+                                </div>
+                            ))}
+
+                            <h2 className="font-bold border-b border-black uppercase text-xs mb-2">Education</h2>
+                            {resumeData.education.map((edu, i) => (
+                                <div key={i} className="flex justify-between text-sm mb-1">
+                                    <span><strong>{edu.school}</strong>, {edu.degree}</span>
+                                    <span>{edu.dates}</span>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </>
