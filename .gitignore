@@ -54,3 +54,5 @@ next-env.d.ts
 
 # Ignore the local storage folder
 storage/
+
+*.bat
