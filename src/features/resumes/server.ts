@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// 1. Ensure this is exported so page.tsx can find it
+// 1. Heavy fetcher: Used for the main Resume Vault page
 export async function getResumes() {
     return await prisma.resumeVariant.findMany({
         include: {
@@ -13,7 +13,18 @@ export async function getResumes() {
     });
 }
 
-// 2. Ensure this is exported and accepts the filePath
+// 2. NEW: Lightweight fetcher used for the Application Form dropdown
+export async function getResumeOptions() {
+    return await prisma.resumeVariant.findMany({
+        select: {
+            id: true,
+            name: true,
+        },
+        orderBy: { updatedAt: "desc" }, // Most recently updated at the top
+    });
+}
+
+// 3. Mutation: Handles uploading new resumes
 export async function createResumeVariant(data: {
     name: string;
     notes?: string;

@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 export async function getApplications() {
     return await prisma.application.findMany({
         orderBy: { updatedAt: "desc" },
+        include: {
+            resume: true, // This pulls in the linked ResumeVariant data! (Make sure this matches your Prisma schema relation name, it might be 'resumeVariant')
+        }
     });
 }
 
@@ -17,14 +20,20 @@ export async function createApplication(data: {
     status: string;
     postUrl?: string;
     jobDescription?: string;
+    resumeId?: string | null;
 }) {
+
+    // ✅ THE FIX: Coerce empty strings into a true null so SQL Server doesn't panic
+    const safeResumeId = data.resumeId?.trim() ? data.resumeId : null;
+
     await prisma.application.create({
         data: {
             company: data.company,
             role: data.role,
-            status: data.status, // Should be "Draft" when creating from your form
+            status: data.status,
             postUrl: data.postUrl,
             jobDescription: data.jobDescription,
+            resumeId: safeResumeId, // Pass the sanitized variable here
         },
     });
 

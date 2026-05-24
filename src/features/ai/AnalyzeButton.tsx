@@ -3,24 +3,34 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BrainCircuit, Loader2 } from "lucide-react";
-import { analyzeJobApplication } from "./actions";
+import { generateFitScore } from "./actions";
+import { toast } from "sonner";
 
-export function AnalyzeButton({
-                                  applicationId,
-                                  jobDescription
-                              }: {
-    applicationId: string,
-    jobDescription: string | null
-}) {
+// 1. Notice jobDescription is COMPLETELY gone from the props
+export function AnalyzeButton({ applicationId }: { applicationId: string }) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     async function handleAnalysis() {
-        if (!jobDescription) return;
+        // 2. No early return! It fires immediately.
         setIsAnalyzing(true);
+
         try {
-            await analyzeJobApplication(applicationId, jobDescription);
+            const result = await generateFitScore(applicationId);
+
+            if (result.success) {
+                toast.success("Analysis Complete", {
+                    description: `Your AI Fit Score is ${result.score}/100.`,
+                });
+            } else {
+                toast.error("Analysis Failed", {
+                    description: result.error || "Could not generate score.",
+                });
+            }
         } catch (error) {
             console.error("AI Analysis failed:", error);
+            toast.error("System Error", {
+                description: "Check your terminal for connection issues.",
+            });
         } finally {
             setIsAnalyzing(false);
         }
@@ -30,7 +40,7 @@ export function AnalyzeButton({
         <Button
             className="w-full"
             onClick={handleAnalysis}
-            disabled={isAnalyzing || !jobDescription}
+            disabled={isAnalyzing} // 3. Disabled only when loading
         >
             {isAnalyzing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

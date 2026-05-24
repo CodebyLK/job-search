@@ -1,32 +1,80 @@
 "use server";
 
-// 1. Core library for the function
 import { generateObject } from "ai";
-// 2. Google provider for the model
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import path from "path";
+import fs from "fs/promises";
 
-export async function analyzeJobApplication(applicationId: string, jobDescription: string) {
-    const analysisSchema = z.object({
-        fitScore: z.number().min(0).max(100).describe("A percentage score of how well a software engineering profile fits this role."),
-        missingKeywords: z.array(z.string()).describe("A list of 3 to 5 mandatory technical skills or tools mentioned in the job description."),
-    });
+export async function generateFitScore(applicationId: string) {
+    try {
+        const app = await prisma.application.findUnique({
+            where: { id: applicationId },
+            include: { resume: true }
+        });
 
-    const { object } = await generateObject({
-        model: google("gemini-1.5-flash"), // Pass the provider's model here
-        schema: analysisSchema,
-        prompt: `Analyze the following software engineering job description. Extract the core required technical skills and evaluate a generic fit score.\n\nJob Description:\n${jobDescription}`,
-    });
+        if (!app || !app.jobDescription || !app.resume?.filePath) {
+            return { success: false, error: "Missing Job Description or attached Resume." };
+        }
 
-    await prisma.application.update({
-        where: { id: applicationId },
-        data: {
-            fitScore: object.fitScore,
-            aiAnalysis: JSON.stringify(object.missingKeywords),
-        },
-    });
+        // 1. Read the raw PDF file exactly as it is saved on your hard drive
+        const safeFilename = path.basename(app.resume.filePath);
+        const filePath = path.join(process.cwd(), "storage", safeFilename);
+        const dataBuffer = await fs.readFile(filePath);
 
-    revalidatePath(`/applications/${applicationId}`);
+        // 2. Define the exact JSON structure we want back
+        const analysisSchema = z.object({
+            fitScore: z.number().min(0).max(100).describe("A score from 0 to 100 indicating how well the candidate's resume matches the job description."),
+            aiAnalysis: z.string().describe("A concise 3-sentence analysis highlighting matches and gaps, acknowledging the candidate's transition from Chemistry to Software Engineering."),
+        });
+
+        // 3. Pass the raw file directly into Gemini's vision engine
+        const { object } = await generateObject({
+            model: google("gemini-2.5-flash"),
+            schema: analysisSchema,
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: `You are an expert technical recruiter and Applicant Tracking System (ATS).
+                            Evaluate this candidate based on the provided Job Description and their attached Resume.
+                            
+                            Job Description:
+                            ${app.jobDescription}`
+                        },
+                        {
+                            type: "file",
+                            data: dataBuffer,
+                            mediaType: "application/pdf" // 👈 The fix is right here!
+                        }
+                    ]
+                }
+            ]
+        });
+
+        // 4. Save the results back to the database
+        await prisma.application.update({
+            where: { id: applicationId },
+            data: {
+                fitScore: object.fitScore,
+                aiAnalysis: object.aiAnalysis,
+            },
+        });
+
+        revalidatePath(`/applications/${applicationId}`);
+        return { success: true, score: object.fitScore };
+
+    } catch (error) {
+        console.error("AI Analysis failed:", error);
+        return {
+            success: false,
+            // ✅ THE FIX: Safely extract the message without using 'any'
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+
 }

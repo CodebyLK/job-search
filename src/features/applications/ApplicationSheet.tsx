@@ -9,6 +9,13 @@ import {
     SheetTitle,
     SheetTrigger
 } from "@/components/ui/sheet";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,25 +23,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { createApplication } from "./server";
 
-export function ApplicationSheet() {
+// 1. Define the shape of the data we expect from the server
+type ApplicationSheetProps = {
+    resumes: { id: string; name: string }[];
+};
+
+export function ApplicationSheet({ resumes }: ApplicationSheetProps) {
     const [isOpen, setIsOpen] = useState(false);
 
-    // This function intercepts the form submission, sends data to the server, and closes the sheet
     async function onSubmit(formData: FormData) {
         const data = {
             company: formData.get("company") as string,
             role: formData.get("role") as string,
-            status: "Draft", // New applications start as drafts until you formally apply
+            status: "Draft",
             postUrl: formData.get("postUrl") as string,
+            resumeId: formData.get("resumeId") as string | null,
+            // ✅ ADD THIS LINE:
+            jobDescription: formData.get("jobDescription") as string,
         };
 
         await createApplication(data);
-        setIsOpen(false); // Close the slide-out on success
+        setIsOpen(false);
     }
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            {/* The Button that lives on your page */}
             <SheetTrigger asChild>
                 <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" />
@@ -42,7 +55,6 @@ export function ApplicationSheet() {
                 </Button>
             </SheetTrigger>
 
-            {/* The Slide-Out Panel */}
             <SheetContent className="sm:max-w-xl overflow-y-auto">
                 <SheetHeader className="mb-6">
                     <SheetTitle>New Application Draft</SheetTitle>
@@ -69,6 +81,23 @@ export function ApplicationSheet() {
                         <Input id="postUrl" name="postUrl" type="url" placeholder="https://linkedin.com/..." />
                     </div>
 
+                    {/* 3. The New Resume Dropdown */}
+                    <div className="space-y-2">
+                        <Label htmlFor="resumeId">Tailored Resume Used (Optional)</Label>
+                        <Select name="resumeId">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a resume variant..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {resumes.map((resume) => (
+                                    <SelectItem key={resume.id} value={resume.id}>
+                                        {resume.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label htmlFor="jobDescription">Raw Job Description</Label>
@@ -78,7 +107,7 @@ export function ApplicationSheet() {
                             id="jobDescription"
                             name="jobDescription"
                             placeholder="Paste the entire text of the job posting here..."
-                            className="h-64 font-mono text-xs resize-none" // Monospace font makes dense text easier to scan
+                            className="h-64 font-mono text-xs resize-none"
                         />
                     </div>
 

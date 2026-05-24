@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, MoreHorizontal } from "lucide-react";
+import { ExternalLink, MoreHorizontal, FileText } from "lucide-react"; // <-- Added FileText
 import { format } from "date-fns";
 
 // Type inferred from our Prisma Schema
@@ -22,6 +22,7 @@ type Application = {
     status: string;
     postUrl: string | null;
     updatedAt: Date;
+    resume: { id: string; name: string } | null; // <-- Added the nested resume data
 };
 
 export function ApplicationTable({ data }: { data: Application[] }) {
@@ -46,6 +47,8 @@ export function ApplicationTable({ data }: { data: Application[] }) {
                     <TableRow className="bg-muted/50">
                         <TableHead className="w-[200px] h-9 text-xs uppercase tracking-wider">Company</TableHead>
                         <TableHead className="h-9 text-xs uppercase tracking-wider">Role</TableHead>
+                        {/* Added Resume Column Header */}
+                        <TableHead className="h-9 text-xs uppercase tracking-wider">Resume</TableHead>
                         <TableHead className="h-9 text-xs uppercase tracking-wider">Status</TableHead>
                         <TableHead className="h-9 text-xs uppercase tracking-wider">Last Updated</TableHead>
                         <TableHead className="w-[100px] h-9 text-xs uppercase tracking-wider text-right">Actions</TableHead>
@@ -54,7 +57,8 @@ export function ApplicationTable({ data }: { data: Application[] }) {
                 <TableBody>
                     {data.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            {/* Updated colSpan from 5 to 6 to account for the new column */}
+                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                 No applications tracked yet.
                             </TableCell>
                         </TableRow>
@@ -67,6 +71,19 @@ export function ApplicationTable({ data }: { data: Application[] }) {
                             >
                                 <TableCell className="py-2 font-medium">{app.company}</TableCell>
                                 <TableCell className="py-2">{app.role}</TableCell>
+
+                                {/* Added Resume Cell */}
+                                <TableCell className="py-2">
+                                    {app.resume ? (
+                                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            <span className="truncate max-w-[150px]">{app.resume.name}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-muted-foreground/50 text-sm">—</span>
+                                    )}
+                                </TableCell>
+
                                 <TableCell className="py-2">
                                     <Badge variant="secondary" className={`text-xs font-medium border-0 ${getStatusColor(app.status)}`}>
                                         {app.status}
